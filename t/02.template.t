@@ -456,6 +456,21 @@ for ('link') {
  title="&amp;&lt;&gt;&quot;&#92;&amp;%12%45%+"
  rdf:resource="&amp;%3C%3E%22%5C&amp;%12%45%25+"/>
 
+=== attribute input default filter
+--- xhtml
+<input type="hidden"
+    name=""
+    value="" />
+--- logic
+for ('input') {
+    stag name => '&<>"\\&amp;%12%45%+',
+        value => '&<>"\\&amp;%12%45%+';
+}
+--- expected 
+<input type="hidden"
+    name="&amp;&lt;&gt;&quot;&#92;&amp;%12%45%+"
+    value="&amp;&lt;&gt;&quot;&#92;&amp;amp;%12%45%+" />
+
 === attribute modifier
 --- xhtml
 <link a="URI"

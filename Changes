@@ -1,5 +1,9 @@
 Revision history for Text-Xtangle
 
+0.003 Fri Feb 24 04:11:33 2012
+    ! FIX: tagname lost in _attr_filter.
+    + samples ported from Text-Ampita.
+
 0.002 Fri Feb 24 01:35:27 2012
     ! mv t/02.template t/02.template.t
 

@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use Carp;
 
-our $VERSION = '0.002';
+our $VERSION = '0.003';
 # $Id$
 
 ## no critic qw(ComplexRegexes EscapedMetacharacters EnumeratedClasses)
@@ -351,7 +351,7 @@ sub _choose_filter {
 sub _attr_filter {
     my($class, $stag, $attrname, $value) = @_;
     return $value if ! defined $value;
-    my $tagname = lc $stag->[3];
+    my $tagname = lc $stag->[2];
     my $filter = $class->_choose_filter(
         $class->_attr($stag, $attrname) || q(),
         $tagname eq 'input' && $attrname eq 'value' ? 'xml'
@@ -413,7 +413,7 @@ Text::Xtangle - Template system from a XML with a Presentation Logic Script.
 
 =head1 VERSION
 
-0.002
+0.003
 
 =head1 SYNOPSIS
 

@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use Carp;
 
-our $VERSION = '0.001';
+our $VERSION = '0.002';
 # $Id$
 
 ## no critic qw(ComplexRegexes EscapedMetacharacters EnumeratedClasses)
@@ -24,7 +24,7 @@ sub zip {
     my $doc = $class->document($xml);
     my $logic = $class->logic($script);
     my $header = $logic->{q(sub{)} ? $logic->{q(sub{)} . "\n" : q();
-    my $perl = "sub{\n"
+    my $perl = "my \$tmpl = sub{\n"
         . "use utf8;\n"
         . $header
         . "my \$_t=q();\n";
@@ -84,7 +84,7 @@ sub zip {
     }
     return $perl
         . "return \$_t;\n"
-        . "}\n";
+        . "};\n";
 }
 
 sub _build_block {
@@ -128,14 +128,14 @@ EOS
 sub document {
     my($class, $xml) = @_;
     my $document = [
-        [q{}, q{}, q{}, [], q{}, q{}, q{}],
+        [q(), q(), q(), [], q(), q(), q()],
         [],
-        [q{}, q{}, q{}, [], q{}, q{}, q{}],
+        [q(), q(), q(), [], q(), q(), q()],
     ];
     my @ancestor;
     my $node = $document;
-    while($xml !~ m{\G\z}msxgc) {
-        my($t) = $xml =~ m{\G(^[\x20\t]*)}msxogc;
+    while($xml !~ m{\G\z}gcmosx) {
+        my($t) = $xml =~ m{\G(^[\x20\t]*)}gcmosx;
         if ($xml =~ m{
             \G<
             (?: (?: ($ID) (.*?) ($SP*) (/?>)
@@ -144,7 +144,7 @@ sub document {
                 )
                 ($NL*)
             )?
-        }msxogc) {
+        }gcmosx) {
             my($id1, $t2, $sp3, $gt4, $id5, $sp6, $t7, $nl8)
                 = ($1, $2, $3, $4, $5, $6, $7, $8);
             if ($id1) {
@@ -179,7 +179,7 @@ sub document {
                 $t .= q(<);
             }
         }
-        $t .= $xml =~ m{\G([^<\r\n]+$NL*|$NL+)}msxogc ? $1 : q();
+        $t .= $xml =~ m{\G([^<\r\n]+$NL*|$NL+)}gcmosx ? $1 : q();
         if (@{$node->[1]} == 0 || ref $node->[1][-1]) {
             push @{$node->[1]}, $t;
         }
@@ -355,7 +355,7 @@ sub _attr_filter {
     my $filter = $class->_choose_filter(
         $class->_attr($stag, $attrname) || q(),
         $tagname eq 'input' && $attrname eq 'value' ? 'xml'
-        : $attrname =~ /(?:\A(?:action|src|href|cite)|resource)\z/msxi ? 'uri'
+        : $attrname =~ /(?:\A(?:action|src|href|cite)|resource)\z/imsx ? 'uri'
         : 'text',
     );
     return $class->$filter($value);
@@ -413,7 +413,7 @@ Text::Xtangle - Template system from a XML with a Presentation Logic Script.
 
 =head1 VERSION
 
-0.001
+0.002
 
 =head1 SYNOPSIS
 
@@ -469,7 +469,7 @@ Text::Xtangle - Template system from a XML with a Presentation Logic Script.
         {title => 'BAZ', body => 'baz is baz', date => time},
     );
 
-    my $jail = "Text::Xtangle::Jail" . (int rand 100000);
+    my $jail = "Text::Xtangle::Jail" . (int rand 200000000);
     my $perl = "package $jail;" . Text::Xtangle->zip($xhtml, $logic);
     my $template = eval $perl;
     print encode('UTF-8', $template->(@entries));

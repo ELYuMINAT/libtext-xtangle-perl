@@ -1,4 +1,4 @@
-Text-Xtangle version 0.001
+Text-Xtangle version 0.002
 
 This module provides you to generate a template perl source code
 from a given XHTML and a presentation logic script as like as

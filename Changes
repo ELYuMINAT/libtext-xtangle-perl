@@ -1,5 +1,8 @@
 Revision history for Text-Xtangle
 
+0.002 Fri Feb 24 01:35:27 2012
+    ! mv t/02.template t/02.template.t
+
 0.001 Thu Feb 23 23:24:26 2012
     + Initial release.
 

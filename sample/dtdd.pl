@@ -3,36 +3,29 @@ use strict;
 use warnings;
 use Text::Xtangle;
 
-# tricky markup of definition lists to pass the W3C validator.
-# <!ELEMENT dl (dt|dd)+>
 my $xhtml = <<'END_XHTML';
-<dl>
-<dd id="ditem">
 <dl>
  <dt></dt>
  <dd></dd>
-</dl>
-</dd>
 </dl>
 END_XHTML
 
 my $logic = <<'END_LOGIC';
 my @symbol = @_;
 my($t, $d);
-for ('#ditem') {
-    content;
-}
-for ('#ditem dl') {
+for ('dl') {
+    stag;
     while (($t, $d) = splice @symbol, 0, 2) {
         content;
     }
+    etag;
 }
-for ('#ditem dt') {
+for ('dt') {
     stag;
     print $t;
     etag;
 }
-for ('#ditem dd') {
+for ('dd') {
     stag;
     print $d;
     etag;

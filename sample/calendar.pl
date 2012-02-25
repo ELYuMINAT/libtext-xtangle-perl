@@ -6,21 +6,20 @@ use Text::Xtangle;
 my $xhtml = <<'END_XHTML';
 <table class="calendar">
  <caption></caption>
- <tr><th></th></tr>
- <tr class="week"><td></td></tr>
+ <tr><th>mo tu we th fr st su</th></tr>
+ <tr class="week"><td>&nbsp;</td></tr>
 </table>
 END_XHTML
 
 my $logic = <<'END_LOGIC';
 my($cal) = @_;
-my $week;
 for ('.calendar caption') {
     stag;
     print sprintf '%04d-%02d', $cal->year, $cal->month;
     etag;
 }
 for ('.calendar th') {
-    my @wlabel = qw(mo tu we th fr st su);
+    my @wlabel = split /\s+/, $_->[1];
     for my $w (map { ($_ - $cal->wdoffset) % 7 } 0 .. 6) {
         stag;
         print $wlabel[$w];
@@ -28,21 +27,25 @@ for ('.calendar th') {
     }
 }
 for ('.calendar .week') {
-    for my $w (0 .. 5) {
-        $week = $w;
+    for my $week (0 .. 5) {
         stag class => undef;
         content;
+            # expand C<for ('.calendar .week td')> here.
         etag;
     }
 }
-for ('.calendar td') {
+for ('.calendar .week td') {
     my $wmonth = $cal->wmonth;
     my $msize = $cal->msize;
     for my $wday (0 .. 6) {
-        my $day = $week * 7 + $wday - $wmonth + 1;
-        my $t = $day >= 1 && $day <= $msize ? $day : '&nbsp;';
         stag;
-        print $t;
+        my $day = $week * 7 + $wday - $wmonth + 1;
+        if ($day >= 1 && $day <= $msize) {
+            print $day;
+        }
+        else {
+            content;
+        }
         etag;
     }
 }

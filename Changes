@@ -1,5 +1,10 @@
 Revision history for Text-Xtangle
 
+0.004 Sun Feb 26 15:28:19 2012
+    ! precompile selector.
+    ! speed up _attr_match for id selector.
+    ! speed up _attr for id selector.
+
 0.003 Fri Feb 24 04:11:33 2012
     ! FIX: tagname lost in _attr_filter.
     + samples ported from Text-Ampita.

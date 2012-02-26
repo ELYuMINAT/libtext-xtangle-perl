@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use Carp;
 
-our $VERSION = '0.003';
+our $VERSION = '0.004';
 # $Id$
 
 ## no critic qw(ComplexRegexes EscapedMetacharacters EnumeratedClasses)
@@ -23,7 +23,10 @@ sub zip {
     $class = ref $class || $class;
     my $doc = $class->document($xml);
     my $logic = $class->logic($script);
-    my $header = $logic->{q(sub{)} ? $logic->{q(sub{)} . "\n" : q();
+    my $header = delete $logic->{q(sub{)};
+    if ($header) {
+        $header .= "\n";
+    }
     my $perl = "my \$tmpl = sub{\n"
         . "use utf8;\n"
         . $header
@@ -56,7 +59,7 @@ sub zip {
                 ($node, $i) = ($child, 0);
                 next;
             }
-            my $block = $class->_build_block($child, $logic->{$key});
+            my $block = $class->_build_block($child, $logic->{$key}[0]);
             if ($block =~ m/^[ ]+content;\n/msx) {
                 push @path, $child->[0];
                 push @cont, $perl, $block, 'endblock';
@@ -197,6 +200,7 @@ sub logic {
         croak 'bad logic script source.';
     }
     my %logics;
+    $logics{q(sub{)} = q();
     if ($source =~ m{\A(?!for)(.+?)\n^for}msx) {
         $logics{q(sub{)} = $1;
     }
@@ -206,9 +210,30 @@ sub logic {
         ^[\}][^\n]*\n
     }gmosx) {
         my($selector, $statements) = ($1, $2);
-        $logics{$selector} = $statements;
+        $logics{$selector} = [
+            $statements,
+            $class->_precompile_selector($selector),
+        ];
     }
     return \%logics;
+}
+
+sub _precompile_selector {
+    my($class, $selector) = @_;
+    my @compiled;
+    for my $seterm (split /\s+/msx, $selector) {
+        if ($seterm =~ m{\A
+            ($ID)(?:\#($ID)|[.]([[:alnum:]_:-]+)|\[($ID)([~^\$*|]?=)"([^"]+)"\])?
+        |   [*]? (?:\#($ID)|[.]([[:alnum:]_:-]+)|\[($ID)([~^\$*|]?=)"([^"]+)"\])
+        \z}mosx) {
+            my($tagname, $id, $classname) = ($1, $2 || $7, $3 || $8);
+            my($attr, $op, $str) = $id ? ('id', q(=), $id)
+                : $classname ? ('class', q(~=), $classname)
+                : ($4 || $9, $5 || $10, $6 || $11);
+            push @compiled, [$tagname, $attr, $op, $str];
+        }
+    }
+    return \@compiled;
 }
 
 sub quote {
@@ -220,7 +245,7 @@ sub quote {
 sub _find_logic {
     my($class, $logic, @path) = @_;
     for my $k (keys %{$logic}) {
-        if ($class->_match_selector($k, @path)) {
+        if ($class->_match_selector($logic->{$k}[1], @path)) {
             return $k;
         }
     }
@@ -229,7 +254,7 @@ sub _find_logic {
 
 sub _match_selector {
     my($class, $selector, @path) = @_;
-    my @selist = split /\s+/msx, $selector;
+    my @selist = @{$selector};
     return if ! $class->_match_selector_term(pop @selist, pop @path);
     my $seterm = shift @selist or return 1;
     for my $stag (@path) {
@@ -242,18 +267,9 @@ sub _match_selector {
 sub _match_selector_term {
     my($class, $seterm, $stag) = @_;
     my $element_name = $stag->[2];
-    if ($seterm =~ m{\A
-        ($ID)(?:\#($ID)|[.]([[:alnum:]_:-]+)|\[($ID)([~^\$*|]?=)"([^"]+)"\])?
-    |   [*]? (?:\#($ID)|[.]([[:alnum:]_:-]+)|\[($ID)([~^\$*|]?=)"([^"]+)"\])
-    \z}mosx) {
-        my($tagname, $id, $classname) = ($1, $2 || $7, $3 || $8);
-        my($attr, $op, $str) = $id ? ('id', q(=), $id)
-            : $classname ? ('class', q(~=), $classname)
-            : ($4 || $9, $5 || $10, $6 || $11);
-        return (! $tagname || $element_name eq $tagname)
-            && (! $attr || $class->_attr_match($stag, $attr, $op, $str));
-    }
-    return;
+    my($tagname, $attr, $op, $str) = @{$seterm};
+    return (! $tagname || $element_name eq $tagname)
+        && (! $attr || $class->_attr_match($stag, $attr, $op, $str));
 }
 
 # see http://www.w3.org/TR/css-2010/#selectors
@@ -261,6 +277,9 @@ sub _attr_match {
     my($class, $stag, $attr, $op, $str) = @_;
     my $value = $class->_attr($stag, $attr);
     $value = defined $value ? $value : q();
+    if ($op eq q(=)) {
+        return $value eq $str;
+    }
     if ($op eq q(~=)) {
         return 0 <= index " $value ", " $str ";
     }
@@ -305,13 +324,15 @@ sub stag {
 sub _attr {
     my($class, $stag, @arg) = @_;
     my $attr = $stag->[3]; # [(' ', 'name', '="', 'value', '"') ...]
-    my @indecs = map { $_ * 5 } 0 .. -1 + int @{$attr} / 5;
     if (! @arg) {
+        my @indecs = map { $_ * 5 } 0 .. -1 + int @{$attr} / 5;
         return map { @{$attr}[$_ + 1, $_ + 3] } @indecs;
     }
     my $name = shift @arg or return;
-    for my $i (@indecs) {
+    my $i = 0;
+    while ($i < @{$attr}) {
         if ($attr->[$i + 1] eq $name) {
+            return $attr->[$i + 3] if ! @arg;
             if (@arg == 1 && ! defined $arg[0]) {
                 my @got = splice @{$attr}, $i, 5;
                 return $got[3];
@@ -321,6 +342,7 @@ sub _attr {
             }
             return $attr->[$i + 3];
         }
+        $i += 5;
     }
     if (@arg && defined $arg[0]) {
         my @got = @{$attr} ? @{$attr}[-5 .. -1]
@@ -413,7 +435,7 @@ Text::Xtangle - Template system from a XML with a Presentation Logic Script.
 
 =head1 VERSION
 
-0.003
+0.004
 
 =head1 SYNOPSIS
 

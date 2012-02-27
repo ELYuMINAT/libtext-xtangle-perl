@@ -12,7 +12,7 @@ my $xhtml = <<'END_XHTML';
 <a id="indexlink" href="index.html">front</a>
 <span id="indexhere" class="here">front</span>
 <span id="pagelinks">
-<a href=""></a><span class="here"></span><span class="comma">,</span> 
+<a id="pagelink" href=""></a><span id="pagehere" class="here"></span><span id="pagecomma">,</span> 
 </span>
 |
 <a id="nextlink" href="">next</a>
@@ -75,21 +75,21 @@ for ('#pagelinks') {
         content;
     }
 }
-for ('#pagelinks a') {
+for ('#pagelink') {
     if ($item != $cur) {
         stag href => $links->[$item];
         print $item + 1;
         etag;
     }
 }
-for ('#pagelinks .here') {
+for ('#pagehere') {
     if ($item == $cur) {
         stag;
         print $item + 1;
         etag;
     }
 }
-for ('#pagelinks .comma') {
+for ('#pagecomma') {
     if ($item != $listtail) {
         content;
     }

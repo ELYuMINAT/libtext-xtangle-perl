@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use Carp;
 
-our $VERSION = '0.004';
+our $VERSION = '0.005';
 # $Id$
 
 ## no critic qw(ComplexRegexes EscapedMetacharacters EnumeratedClasses)
@@ -23,10 +23,11 @@ sub zip {
     $class = ref $class || $class;
     my $doc = $class->document($xml);
     my $logic = $class->logic($script);
-    my $header = delete $logic->{q(sub{)};
+    my $header = delete $logic->{'##init'};
     if ($header) {
         $header .= "\n";
     }
+    my $idonly = delete $logic->{'##idonly'};
     my $perl = "my \$tmpl = sub{\n"
         . "use utf8;\n"
         . $header
@@ -47,7 +48,7 @@ sub zip {
                 $perl .= "\$_t.=" . quote(@{$child->[0]}[0, 4, 6]) . ";\n";
                 next;
             }
-            my $key = $class->_find_logic($logic, @path, $child->[0]);
+            my $key = $class->_find_logic($idonly, $logic, @path, $child->[0]);
             if (! $key) {
                 my $a = $child->[0];
                 my $stag = quote(@{$a}[0 .. 2], @{$a->[3]}, @{$a}[4 .. 6]);
@@ -200,21 +201,24 @@ sub logic {
         croak 'bad logic script source.';
     }
     my %logics;
-    $logics{q(sub{)} = q();
+    $logics{'##init'} = q();
     if ($source =~ m{\A(?!for)(.+?)\n^for}msx) {
-        $logics{q(sub{)} = $1;
+        $logics{'##init'} = $1;
     }
+    my $idonly = 1;
     while ($source =~ m{
         ^for[ ][(]'(.*?)'[)][ ]+[\{][^\n]*\n
         (.*?)
         ^[\}][^\n]*\n
     }gmosx) {
         my($selector, $statements) = ($1, $2);
-        $logics{$selector} = [
-            $statements,
-            $class->_precompile_selector($selector),
-        ];
+        if ($selector !~ m/\A[\#]$ID\z/msx) {
+            $idonly = 0;
+        }
+        my $selist = $class->_precompile_selector($selector);
+        $logics{$selector} = [$statements, $selist];
     }
+    $logics{'##idonly'} = $idonly;
     return \%logics;
 }
 
@@ -238,12 +242,25 @@ sub _precompile_selector {
 
 sub quote {
     my $s = join q(), grep { defined } @_;
-    $s =~ s/([\\'])/\\$1/msxg;
+    $s =~ s/([\\'])/\\$1/gmosx;
     return qq('$s');
 }
 
 sub _find_logic {
-    my($class, $logic, @path) = @_;
+    my($class, $idonly, $logic, @path) = @_;
+    my $stag = $path[-1];
+    if (@{$stag->[3]} && $stag->[3][1] eq 'id') {
+        my $tagname = $stag->[2];
+        my $id = $stag->[3][3];
+        my $se1 = q(#) . $id;
+        my $se2 = $tagname . q(#) . $id;
+        return $se1 if exists $logic->{$se1};
+        return $se2 if exists $logic->{$se2};
+        return if $idonly;
+    }
+    elsif ($idonly) {
+        return;
+    }
     for my $k (keys %{$logic}) {
         if ($class->_match_selector($logic->{$k}[1], @path)) {
             return $k;
@@ -435,27 +452,28 @@ Text::Xtangle - Template system from a XML with a Presentation Logic Script.
 
 =head1 VERSION
 
-0.004
+0.005
 
 =head1 SYNOPSIS
 
     use Text::Xtangle;
     use Encode;
-
+    
+    # idonly-mode: fast! all prepared elements start id attribute.
     my $xhtml = <<'END_XHTML';
-    <div class="hentry">
-     <h2></h2>
-     <div id="entry-body">RAW</div>
-     <div id="entry-date">%Y-%m-%d %H:%M</div>
+    <div id="mark:hentry" class="hentry">
+     <h2 id="mark:h2"></h2>
+     <div id="mark:entry-body" class="entry-body">RAW</div>
+     <div id="mark:entry-date" class="entry-date">%Y-%m-%d %H:%M</div>
     </div>
     END_XHTML
-
+    # idonly-mode: use '#ID' style
     my $logic = <<'END_LOGIC';
     my @entries = @_;
     use Time::Piece;
     use Encode;
     my $entry;
-    for ('.hentry') {
+    for ('#mark:hentry') {
         for (@entries) {
             $entry = $_;
             stag;
@@ -463,17 +481,17 @@ Text::Xtangle - Template system from a XML with a Presentation Logic Script.
             etag;
         }
     }
-    for ('h2') {
+    for ('#mark:h2') {
         stag;
         print $entry->{title};
         etag;
     }
-    for ('#entry-body') {
+    for ('#mark:entry-body') {
         stag class => 'content';
         print $entry->{body};
         etag;
     }
-    for ('#entry-date') {
+    for ('#mark:entry-date') {
         my($attr, $data) = @{$_};
         my $ustrtime = gmtime($entry->{date})->strftime('%FT%TZ');
         my $lstrtime = decode('UTF-8', 
@@ -495,6 +513,34 @@ Text::Xtangle - Template system from a XML with a Presentation Logic Script.
     my $perl = "package $jail;" . Text::Xtangle->zip($xhtml, $logic);
     my $template = eval $perl;
     print encode('UTF-8', $template->(@entries));
+    
+    # CSS mode: easy but slow.
+    my $xhtml = <<'END_XHTML';
+    <div class="hentry">
+     <h2></h2>
+     <div class="entry-body">RAW</div>
+     <div class="entry-date">%Y-%m-%d %H:%M</div>
+    </div>
+    END_XHTML
+    
+    my $logic = <<'END_LOGIC';
+    my @entries = @_;
+    use Time::Piece;
+    use Encode;
+    my $entry;
+    for ('.hentry') {
+        # same above '#mark:hentry'
+    }
+    for ('h2') {
+        # same above '#mark:h2'
+    }
+    for ('.entry-body') {
+        # same above '#mark:entry-body'
+    }
+    for ('.entry-date') {
+        # same above '#mark:entry-date'
+    }
+    END_LOGIC
 
 =head1 DESCRIPTION
 

@@ -1,5 +1,8 @@
 Revision history for Text-Xtangle
 
+0.005 Mon Feb 27 03:16:44 2012
+    + introduce idonly mode faster than css mode.
+
 0.004 Sun Feb 26 15:28:19 2012
     ! precompile selector.
     ! speed up _attr_match for id selector.

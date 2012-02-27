@@ -5,20 +5,20 @@ use Text::Xtangle;
 
 my $xhtml = <<'END_XHTML';
 <table class="calendar">
- <caption></caption>
- <tr><th>mo tu we th fr st su</th></tr>
- <tr class="week"><td>&nbsp;</td></tr>
+ <caption id="mark:caltitle"></caption>
+ <tr><th id="mark:calweeklabel">mo tu we th fr st su</th></tr>
+ <tr id="mark:calweek"><td id="mark:calday">&nbsp;</td></tr>
 </table>
 END_XHTML
 
 my $logic = <<'END_LOGIC';
 my($cal) = @_;
-for ('.calendar caption') {
+for ('#mark:caltitle') {
     stag;
     print sprintf '%04d-%02d', $cal->year, $cal->month;
     etag;
 }
-for ('.calendar th') {
+for ('#mark:calweeklabel') {
     my @wlabel = split /\s+/, $_->[1];
     for my $w (map { ($_ - $cal->wdoffset) % 7 } 0 .. 6) {
         stag;
@@ -26,7 +26,7 @@ for ('.calendar th') {
         etag;
     }
 }
-for ('.calendar .week') {
+for ('#mark:calweek') {
     for my $week (0 .. 5) {
         stag class => undef;
         content;
@@ -34,7 +34,7 @@ for ('.calendar .week') {
         etag;
     }
 }
-for ('.calendar .week td') {
+for ('#mark:calday') {
     my $wmonth = $cal->wmonth;
     my $msize = $cal->msize;
     for my $wday (0 .. 6) {

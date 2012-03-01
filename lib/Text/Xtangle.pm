@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use Carp;
 
-our $VERSION = '0.005';
+our $VERSION = '0.006';
 # $Id$
 
 ## no critic qw(ComplexRegexes EscapedMetacharacters EnumeratedClasses)
@@ -134,12 +134,11 @@ sub document {
     my $document = [
         [q(), q(), q(), [], q(), q(), q()],
         [],
-        [q(), q(), q(), [], q(), q(), q()],
     ];
     my @ancestor;
     my $node = $document;
     while($xml !~ m{\G\z}gcmosx) {
-        my($t) = $xml =~ m{\G(^[\x20\t]*)}gcmosx;
+        my $t = $xml =~ m{\G(^[\x20\t]*)}gcmosx ? $1 : q();
         if ($xml =~ m{
             \G<
             (?: (?: ($ID) (.*?) ($SP*) (/?>)
@@ -156,7 +155,6 @@ sub document {
                 my $element = [
                     [$t, q(<), $id1, $attr, $sp3, $gt4, $nl8],
                     [],
-                    [q(), q(), q(), [], q(), q(), q()],
                 ];
                 push @{$node->[1]}, $element;
                 next if $gt4 eq q(/>);
@@ -175,7 +173,6 @@ sub document {
                 push @{$node->[1]}, [
                     [$t, q(), q(), [], "<$t7>", q(), $nl8],
                     [],
-                    [q(), q(), q(), [], q(), q(), q()],
                 ];
                 next;
             }
@@ -452,7 +449,7 @@ Text::Xtangle - Template system from a XML with a Presentation Logic Script.
 
 =head1 VERSION
 
-0.005
+0.006
 
 =head1 SYNOPSIS
 

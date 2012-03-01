@@ -1,5 +1,8 @@
 Revision history for Text-Xtangle
 
+0.006 Thu Mar  1 10:30:27 2012
+    ! avoid warings undefined at document.
+
 0.005 Mon Feb 27 03:16:44 2012
     + introduce idonly mode faster than css mode.
 

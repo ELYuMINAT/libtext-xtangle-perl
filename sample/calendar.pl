@@ -20,7 +20,8 @@ for ('#mark:caltitle') {
 }
 for ('#mark:calweeklabel') {
     my @wlabel = split /\s+/, $_->[1];
-    for my $w (map { ($_ - $cal->wdoffset) % 7 } 0 .. 6) {
+    my $wdoffset = $cal->wdoffset;
+    for my $w (map { ($_ - $wdoffset) % 7 } 0 .. 6) {
         stag;
         print $wlabel[$w];
         etag;
@@ -78,16 +79,21 @@ sub initialize {
     $self->{'wdoffset'} = 0; # 0: mo tu..., 1: su mo tu...
     @{$self}{qw(year month)} = $self->_year_month(@arg);
     use integer;
-    my @yday = ([-31,0,31,59,90,120,151,181,212,243,273,304,334,365],
-                 [-31,0,31,60,91,121,152,182,213,244,274,305,335,366]);
-    my @msize = ([31,31,28,31,30,31,30,31,31,30,31,30,31],
-                 [31,31,29,31,30,31,30,31,31,30,31,30,31]);
-    my($y, $m) = @{$self}{'year', 'month'};
-    my $leap = ($y % 4 == 0 && $y % 100 != 0 || $y % 400 == 0) ? 1 : 0;
-    $y--;
+    my @yday = (
+        [-31, 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365],
+        [-31, 0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335, 366],
+    );
+    my @msize = (
+        [31, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31],
+        [31, 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31],
+    );
+    my($year, $month) = @{$self}{'year', 'month'};
+    my $leap = ($year % 4 == 0
+        && $year % 100 != 0 || $year % 400 == 0) ? 1 : 0;
+    my $y = $year - 1;
     $self->{'wmonth'} = ($y + $y / 4 - $y / 100 + $y / 400
-        + $yday[$leap][$m] + $self->{'wdoffset'}) % 7;
-    $self->{'msize'} = $msize[$leap][$m];
+        + $yday[$leap][$month] + $self->{'wdoffset'}) % 7;
+    $self->{'msize'} = $msize[$leap][$month];
     return;
 }
 

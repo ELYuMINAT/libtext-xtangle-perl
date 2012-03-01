@@ -45,7 +45,7 @@ print $template->(
 
 __END__
 <table>
- <caption align="left">ABC</caption>
+ <caption>ABC</caption>
  <tr>
   <td width="32" align="left">L1</td>
   <td width="32" align="left">L2</td>

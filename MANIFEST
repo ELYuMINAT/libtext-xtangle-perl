@@ -17,6 +17,7 @@ sample/table.pl
 t/00.load.t
 t/01.zip.t
 t/02.template.t
+t/03.get_element.t
 t/perlcritic.t
 t/pod-coverage.t
 t/pod.t

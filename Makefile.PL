@@ -5,6 +5,7 @@ use ExtUtils::MakeMaker;
 WriteMakefile(
     NAME                => 'Text::Xtangle',
     AUTHOR              => 'MIZUTANI Tociyuki <tociyuki@gmail.com>',
+    LICENSE             => 'perl',
     VERSION_FROM        => 'lib/Text/Xtangle.pm',
     ABSTRACT_FROM       => 'lib/Text/Xtangle.pm',
     PL_FILES            => {},

@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use Carp;
 
-our $VERSION = '0.006';
+our $VERSION = '0.007';
 # $Id$
 
 ## no critic qw(ComplexRegexes EscapedMetacharacters EnumeratedClasses)
@@ -21,7 +21,7 @@ sub zip {
     my($class, $xml, $script) = @_;
     ## no critic qw(ProhibitInterpolationOfLiterals)
     $class = ref $class || $class;
-    my $doc = $class->document($xml);
+    my $doc = ref $xml ? $xml : $class->document($xml);
     my $logic = $class->logic($script);
     my $header = delete $logic->{'##init'};
     if ($header) {
@@ -129,12 +129,45 @@ EOS
     return $block;
 }
 
+sub get_element {
+    my($class, $doc, $selector) = @_;
+    my $selist = $class->_precompile_selector($selector);
+    my @path;
+    my @todo = ($doc, 0);
+    my @cont;
+    while (@todo) {
+        my $i = pop @todo;
+        my $node = pop @todo;
+        while ($i < @{$node->[1]}) {
+            my $child = $node->[1][$i++];
+            next if ! ref $child || $child->[0][1] ne q(<);
+            if ($class->_match_selector($selist, @path, $child->[0])) {
+                return $child;
+            }
+            next if $child->[0][5] eq q(/>);
+            push @path, $child->[0];
+            push @cont, 'etag';
+            push @todo, $node, $i;
+            ($node, $i) = ($child, 0);
+        }
+        if (@cont) {
+            pop @cont;
+            pop @path;
+        }
+    }
+    return;
+}
+
+sub fold_element {
+    my($class, $element) = @_;
+    my $src = $class->zip([[], [$element]], q());
+    my $code = eval $src or croak "$@";
+    return $code->();
+}
+
 sub document {
     my($class, $xml) = @_;
-    my $document = [
-        [q(), q(), q(), [], q(), q(), q()],
-        [],
-    ];
+    my $document = [[], []];
     my @ancestor;
     my $node = $document;
     while($xml !~ m{\G\z}gcmosx) {
@@ -153,8 +186,7 @@ sub document {
             if ($id1) {
                 my $attr = [$t2 =~ m{$ATTR}msxog];
                 my $element = [
-                    [$t, q(<), $id1, $attr, $sp3, $gt4, $nl8],
-                    [],
+                    [$t, q(<), $id1, $attr, $sp3, $gt4, $nl8], [],
                 ];
                 push @{$node->[1]}, $element;
                 next if $gt4 eq q(/>);
@@ -171,8 +203,7 @@ sub document {
             }
             elsif ($t7) {
                 push @{$node->[1]}, [
-                    [$t, q(), q(), [], "<$t7>", q(), $nl8],
-                    [],
+                    [$t, q(), q(), [], "<$t7>", q(), $nl8], [],
                 ];
                 next;
             }
@@ -449,7 +480,7 @@ Text::Xtangle - Template system from a XML with a Presentation Logic Script.
 
 =head1 VERSION
 
-0.006
+0.007
 
 =head1 SYNOPSIS
 
@@ -550,6 +581,10 @@ the Kwartz-Ruby template system.
 =over
 
 =item C<zip($xhtml, $logic)>
+
+=item C<get_element($doc_tree, $selector)>
+
+=item C<fold_element($element)>
 
 =item C<document($xhtml)>
 

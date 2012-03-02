@@ -1,5 +1,9 @@
 Revision history for Text-Xtangle
 
+0.007 Fri Mar  2 03:26:25 2012
+    + add get_element/fold_element methods.
+    ! zip can get a element tree at first argument.
+
 0.006 Thu Mar  1 10:30:27 2012
     ! avoid warings undefined at document.
 

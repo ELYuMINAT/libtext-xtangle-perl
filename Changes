@@ -1,5 +1,12 @@
 Revision history for Text-Xtangle
 
+0.008 Wed Mar  7 08:22:37 2012
+    + double braced interpolations and modifier.
+    - put an end of bareword modifiers.
+    - depricate bareword modifiers.
+    + add filter method.
+    ! change: escape_XXX are not methods but functions.
+
 0.007 Fri Mar  2 03:26:25 2012
     + add get_element/fold_element methods.
     ! zip can get a element tree at first argument.

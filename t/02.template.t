@@ -125,10 +125,10 @@ for ('#hoge') {
 
 === inner modifier
 --- xhtml
-<a>XML</a>
-<b>HTML</b>
-<c>RAW</c>
-<d>TEXT</d>
+<a>{{_|xmlall}}</a>
+<b>{{_|htmlall}}</b>
+<c>{{_|RAW}}</c>
+<d>{{_|html}}</d>
 <e>default</e>
 --- logic
 for ('a') {
@@ -367,7 +367,7 @@ for ('#hoge') {
 
 === skip tag RAW
 --- xhtml
-<p><b id="hoge">RAW</b></p>
+<p><b id="hoge">{{_|RAW}}</b></p>
 --- logic
 for ('#hoge') {
     print '<![CDATA[<&>"&nbsp;]]>';
@@ -473,12 +473,12 @@ for ('input') {
 
 === attribute modifier
 --- xhtml
-<link a="URI"
- b="URL"
- c="XML"
- d="HTML"
- e="RAW"
- f="TEXT"/>
+<link a="{{_|uri}}"
+ b="{{_|url}}"
+ c="{{_|xmlall}}"
+ d="{{_|htmlall}}"
+ e="{{_|RAW}}"
+ f="{{_|html}}"/>
 --- logic
 for ('link') {
     stag

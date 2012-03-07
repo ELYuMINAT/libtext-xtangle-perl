@@ -8,14 +8,14 @@ my $rdf = <<'END_RDF';
   xmlns:trackback="http://madskills.com/public/xml/rss/module/trackback/"
   xmlns:dc="http://purl.org/dc/elements/1.1/">
 <rdf:Description id="trackback"
-  rdf:about="URI"
-  trackback:ping="URI"
-  dc:title="TEXT"
-  dc:identifier="URI"
-  dc:description="TEXT" />
+  rdf:about="{{_|uri}}"
+  trackback:ping="{{_|uri}}"
+  dc:title="{{_|xmlall}}"
+  dc:identifier="{{_|uri}}"
+  dc:description="{{_|xmlall}}" />
 
-<rdf:Description id="entry" rdf:about="URI">
- <dc:title>TEXT</dc:title>
+<rdf:Description id="entry" rdf:about="{{_|uri}}">
+ <dc:title>{{_|xmlall}}</dc:title>
 </rdf:Description>
 </rdf:RDF>
 END_RDF
@@ -61,14 +61,14 @@ __END__
   trackback:ping="http://example.jp/blog/ping?id=foo"
   dc:title="hoge hoge"
   dc:identifier="http://example.jp/blog/foo"
-  dc:description="hoge&nbsp;hoge"
+  dc:description="hoge&amp;nbsp;hoge"
   dc:data="2006-07-22T14:05:23+09:00" />
 
 <rdf:Description rdf:about="hoge.html">
  <dc:title>Hoge</dc:title>
 </rdf:Description>
 <rdf:Description rdf:about="http://example.jp/blog/foo">
- <dc:title>example &nbsp; hoge</dc:title>
+ <dc:title>example &amp;nbsp; hoge</dc:title>
 </rdf:Description>
 </rdf:RDF>
 

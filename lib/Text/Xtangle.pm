@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use Carp;
 
-our $VERSION = '0.007';
+our $VERSION = '0.008';
 # $Id$
 
 ## no critic qw(ComplexRegexes EscapedMetacharacters EnumeratedClasses)
@@ -16,6 +16,8 @@ my $ID = qr{[[:alpha:]_:][[:alnum:]_:-]*}msx;
 my $SP = q([ \\t\\n\\r]);
 my $NL = qr{(?:\r\n?|\n)}msx;
 my $ATTR = qr{($SP+)($ID)($SP*=$SP*\")([^<>\"]*)(\")}msx;
+my $KEY = '[[:alpha:]][[:alnum:]_-]*';
+my $MOD = 'html(?:all)?|xml(?:all)?|ur[il](?:all)?|RAW';
 
 sub zip {
     my($class, $xml, $script) = @_;
@@ -101,10 +103,7 @@ sub _build_block {
     my $attr = join q(,), map { quote($_) } $class->_attr($child->[0]);
     my $data = quote($class->_data($child) || q());
     my $etag = quote(@{$child->[2]}[0 .. 2, 4 .. 6]);
-    my $filter = $class->_choose_filter(
-        $class->_data($child) || q(),
-        $child->[0][2] eq 'textarea' ? 'xml' : 'text',
-    );
+    my $filter = $child->[0][2] eq 'textarea' ? 'xmlall' : 'xml';
     $tmpl =~ s/^[ ]+element;\n/ stag;\n content;\n etag;\n/gmsx;
     my $block = <<"EOS";
 for ([{$attr}, $data]) {
@@ -118,7 +117,7 @@ EOS
     if ($child->[0][5] eq q(>)) {
         $block =~ s{
             ^[ ]+print\s+(.+?);\n
-        }{\$_t.=$class->$filter(join q(), $1);\n}gmsx;
+        }{\$_t.=$class->filter('$filter', $data, $1);\n}gmsx;
         $block =~ s{^[ ]+etag;\n}{\$_t.=$etag;\n}gmsx;
     }
     else {
@@ -400,45 +399,66 @@ sub _attr {
     return;
 }
 
-my %FILTERS = (
-    'URI' => 'uri',
-    'URL' => 'uri',
-    'HTML' => 'xml',
-    'XML' => 'xml',
-    'RAW' => 'raw',
-    'TEXT' => 'text',
-);
-
-sub _choose_filter {
-    my($class, $modifier, $default_filter) = @_;
-    my $filter = $FILTERS{$modifier} || $default_filter;
-    return "escape_${filter}";
-}
-
 sub _attr_filter {
     my($class, $stag, $attrname, $value) = @_;
     return $value if ! defined $value;
     my $tagname = lc $stag->[2];
-    my $filter = $class->_choose_filter(
-        $class->_attr($stag, $attrname) || q(),
-        $tagname eq 'input' && $attrname eq 'value' ? 'xml'
+    my $filter = $tagname eq 'input' && $attrname eq 'value' ? 'xmlall'
         : $attrname =~ /(?:\A(?:action|src|href|cite)|resource)\z/imsx ? 'uri'
-        : 'text',
-    );
-    return $class->$filter($value);
+        : 'xml';
+    my $attr_value = $class->_attr($stag, $attrname) || q();
+    return $class->filter($filter, $attr_value, $value);
 }
 
-sub escape_raw { return $_[1] }
+my %FILTER = (
+    'htmlall' => \&escape_htmlall,
+    'html' => \&escape_html,
+    'xmlall' => \&escape_htmlall,
+    'xml' => \&escape_html,
+    'uri' => \&escape_uri,
+    'url' => \&escape_uri,
+    'uriall' => \&escape_uriall,
+    'urlall' => \&escape_uriall,
+    'RAW' => \&escape_raw,
+);
 
-sub escape_xml {
-    my($class, $t) = @_;
+sub filter {
+    my($class, $default_filter, $data, @arg) = @_;
+    if (@arg == 1 && ref $arg[0] eq 'HASH') {
+        my $h = $arg[0];
+        $data =~ s{ \{\{\s*($KEY)\s*(?:\|\s*($MOD)\s*)?\}\} }{
+            _filter_param_with_key($1, $h, $2, $default_filter)
+        }egmosx;
+        return $data;
+    }
+    my $h = {'_' => join q(), @arg};
+    if ($data =~ s{ \{\{\s*_?\s*(?:\|\s*($MOD)\s*)?\}\} }{
+        _filter_param_with_key('_', $h, $1, $default_filter)
+    }egmosx) {
+        return $data;
+    }
+    my $filter = $FILTER{$default_filter} || \&escape_html;
+    return $filter->($h->{'_'});
+}
+
+sub _filter_param_with_key {
+    my($key, $param, $modifier, $default_filter) = @_;
+    return q() if ! exists $param->{$key} || ! defined $param->{$key};
+    my $filter = $FILTER{$modifier || $default_filter} || \&escape_html;
+    return $filter->($param->{$key});
+}
+
+sub escape_raw { return $_[0] }
+
+sub escape_htmlall {
+    my($t) = @_;
     $t = defined $t ? $t : q();
     $t =~ s{([<>"'&\\])}{ $XML_SPECIAL{$1} }egmsx;
     return $t;
 }
 
-sub escape_text {
-    my($class, $t) = @_;
+sub escape_html {
+    my($t) = @_;
     $t = defined $t ? $t : q();
     $t =~ s{
         (?:([<>"'\\])
@@ -453,8 +473,19 @@ sub escape_text {
     return $t;
 }
 
+sub escape_uriall {
+    my($t) = @_;
+    $t = defined $t ? $t : q();
+    if (utf8::is_utf8($t)) {
+        require Encode;
+        $t = Encode::encode('UTF-8', $t);
+    }
+    $t =~ s{([^[:alnum:]\-_~/.,:])}{sprintf '%%%02X', ord $1}egmosx;
+    return $t;
+}
+
 sub escape_uri {
-    my($class, $t) = @_;
+    my($t) = @_;
     $t = defined $t ? $t : q();
     if (utf8::is_utf8($t)) {
         require Encode;
@@ -480,7 +511,7 @@ Text::Xtangle - Template system from a XML with a Presentation Logic Script.
 
 =head1 VERSION
 
-0.007
+0.008
 
 =head1 SYNOPSIS
 
@@ -491,7 +522,7 @@ Text::Xtangle - Template system from a XML with a Presentation Logic Script.
     my $xhtml = <<'END_XHTML';
     <div id="mark:hentry" class="hentry">
      <h2 id="mark:h2"></h2>
-     <div id="mark:entry-body" class="entry-body">RAW</div>
+     <div id="mark:entry-body" class="entry-body">{{_|RAW}}</div>
      <div id="mark:entry-date" class="entry-date">%Y-%m-%d %H:%M</div>
     </div>
     END_XHTML
@@ -546,7 +577,7 @@ Text::Xtangle - Template system from a XML with a Presentation Logic Script.
     my $xhtml = <<'END_XHTML';
     <div class="hentry">
      <h2></h2>
-     <div class="entry-body">RAW</div>
+     <div class="entry-body">{{_|RAW}}</div>
      <div class="entry-date">%Y-%m-%d %H:%M</div>
     </div>
     END_XHTML
@@ -594,11 +625,15 @@ the Kwartz-Ruby template system.
 
 =item C<stag(\@template, \%attribute_replacements)>
 
+=item C<filter($default_filter, $brace_template, @arg)>
+
 =item C<escape_raw($string)>
 
-=item C<escape_xml($string)>
+=item C<escape_htmlall($string)>
 
-=item C<escape_text($string)>
+=item C<escape_html($string)>
+
+=item C<escape_uriall($string)>
 
 =item C<escape_uri($string)>
 

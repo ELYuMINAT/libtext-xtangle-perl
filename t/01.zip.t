@@ -22,8 +22,8 @@ my $src = Text::Xtangle->zip($xhtml, $logic);
 
 ok ! ref $src, 'isa Str';
 
-my $code = eval { eval $src };
-
+my $code = eval $src;
+$@ and diag "$@";
 ok ! $@, 'enable to eval';
 is 'CODE', ref $code, 'isa CodeRef';
 is "<h1>Hello, World</h1>\n", $code->(), 'run it';

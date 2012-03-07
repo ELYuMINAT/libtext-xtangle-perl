@@ -451,14 +451,14 @@ sub escape_text {
         $1 ? $XML_SPECIAL{$1} : $2 ? qq(\&$2;) : q(&amp;)
     }egmosx;
     return $t;
-};
+}
 
 sub escape_uri {
     my($class, $t) = @_;
     $t = defined $t ? $t : q();
     if (utf8::is_utf8($t)) {
         require Encode;
-        $t = Encode::encode('utf-8', $t);
+        $t = Encode::encode('UTF-8', $t);
     }
     $t =~ s{
         (%([[:xdigit:]]{2})?)|(&(?:amp;)?)|([^[:alnum:]\-_~*+=/.!,;:\@?\#])
